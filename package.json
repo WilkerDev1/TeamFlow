@@ -1,0 +1,40 @@
+{
+  "name": "team-flow",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de tareas Kanban con Scrum",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test:ui": "node tests/ui_test.js"
+  },
+  "keywords": [
+    "kanban",
+    "scrum",
+    "nodejs",
+    "selenium"
+  ],
+  "author": "Wilker",
+  "license": "ISC",
+  "dependencies": {
+    "chromedriver": "^120.0.2",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.22.1",
+    "mongoose": "^8.20.2",
+    "morgan": "^1.10.1",
+    "selenium-webdriver": "^4.39.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WilkerDev1/TeamFlow.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/WilkerDev1/TeamFlow/issues"
+  },
+  "homepage": "https://github.com/WilkerDev1/TeamFlow#readme"
+}
