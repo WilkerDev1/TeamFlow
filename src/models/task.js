@@ -8,9 +8,8 @@ const TaskSchema = new Schema({
     },
     description: {
         type: String,
-        required: true
+        required: false // Opcional, para flexibilidad
     },
-    // Estado crucial para el Kanban: Por hacer, En progreso, Hecho
     status: {
         type: String,
         enum: ['todo', 'progress', 'done'], 
@@ -20,6 +19,14 @@ const TaskSchema = new Schema({
         type: String,
         enum: ['baja', 'media', 'alta'],
         default: 'media'
+    },
+    project: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Project' 
+    },
+    assignedTo: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User' 
     },
     created_at: {
         type: Date,

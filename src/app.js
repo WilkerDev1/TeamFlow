@@ -2,56 +2,136 @@ const express = require('express');
 const path = require('path');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
-const app = express();
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
 
-// 1. Conexión a Base de Datos
+// Modelos
+const User = require('./models/user');
+const Project = require('./models/project');
+const Task = require('./models/task');
+
+// Inicialización
+const app = express();
 require('./database');
 
-// 2. Configuraciones
+// Configuraciones
 app.set('port', process.env.PORT || 3000);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// 3. Middlewares
+// Middlewares
 app.use(morgan('dev'));
-app.use(express.urlencoded({ extended: false })); // Para recibir datos de formularios HTML
-app.use(express.json()); // Para recibir JSON (útil para drag & drop futuro)
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(session({
+    secret: 'teamflow_secret_key',
+    resave: false,
+    saveUninitialized: false
+}));
 
-// 4. Archivos estáticos
+// Middleware de Autenticación Propio
+const isAuthenticated = (req, res, next) => {
+    if (req.session.userId) return next();
+    res.redirect('/login');
+};
+
+// Variable global para la vista (Usuario actual)
+app.use(async (req, res, next) => {
+    res.locals.user = req.session.userId ? await User.findById(req.session.userId) : null;
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 5. Rutas
-const Task = require('./models/task');
+// --- RUTAS ---
 
-// Ruta Principal: Renderiza el tablero
-app.get('/', async (req, res) => {
-    try {
-        // Consultas separadas para organizar las columnas del Kanban
-        const todos = await Task.find({ status: 'todo' });
-        const inProgress = await Task.find({ status: 'progress' });
-        const done = await Task.find({ status: 'done' });
+// AUTH (TF-001, TF-002)
+app.get('/login', (req, res) => res.render('auth/login'));
+app.get('/register', (req, res) => res.render('auth/register'));
+app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
-        res.render('index', { 
-            titulo: 'Team Flow - Tablero Scrum',
-            todos,
-            inProgress,
-            done
-        });
-    } catch (error) {
-        console.error(error);
-        res.send("Error al cargar el tablero");
+app.post('/register', async (req, res) => {
+    const { name, email, password } = req.body;
+    const user = new User({ name, email, password });
+    await user.save();
+    res.redirect('/login');
+});
+
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (user && await user.matchPassword(password)) {
+        req.session.userId = user._id;
+        res.redirect('/');
+    } else {
+        res.render('auth/login', { error: 'Credenciales inválidas' });
     }
 });
 
-// Ruta para crear tareas (POST)
-app.post('/add', async (req, res) => {
-    const task = new Task(req.body);
-    await task.save();
+// DASHBOARD (TF-003)
+app.get('/', isAuthenticated, async (req, res) => {
+    const projects = await Project.find({ 
+        $or: [{ owner: req.session.userId }, { members: req.session.userId }] 
+    }).populate('owner');
+    res.render('dashboard', { projects });
+});
+
+app.post('/projects/add', isAuthenticated, async (req, res) => {
+    const project = new Project({
+        title: req.body.title,
+        description: req.body.description,
+        owner: req.session.userId,
+        members: [req.session.userId]
+    });
+    await project.save();
     res.redirect('/');
 });
 
-// 6. Iniciar Servidor
+// KANBAN BOARD (TF-004, TF-005, TF-010)
+app.get('/project/:id', isAuthenticated, async (req, res) => {
+    const project = await Project.findById(req.params.id).populate('members');
+    
+    // Filtro "Mis Tareas" (TF-010)
+    let query = { project: project._id };
+    if (req.query.filter === 'my') {
+        query.assignedTo = req.session.userId;
+    }
+
+    const tasks = await Task.find(query).populate('assignedTo');
+    
+    // Clasificar tareas
+    const todos = tasks.filter(t => t.status === 'todo');
+    const progress = tasks.filter(t => t.status === 'progress');
+    const done = tasks.filter(t => t.status === 'done');
+
+    res.render('board', { project, todos, progress, done, filter: req.query.filter });
+});
+
+// CREAR TAREA (TF-004)
+app.post('/project/:id/tasks/add', isAuthenticated, async (req, res) => {
+    const task = new Task({
+        ...req.body,
+        project: req.params.id,
+        assignedTo: req.body.assignedTo || req.session.userId // Asignar a uno mismo por defecto
+    });
+    await task.save();
+    res.redirect(`/project/${req.params.id}`);
+});
+
+// DRAG AND DROP API (TF-006)
+app.post('/api/tasks/move', isAuthenticated, async (req, res) => {
+    const { taskId, newStatus } = req.body;
+    await Task.findByIdAndUpdate(taskId, { status: newStatus });
+    res.json({ success: true });
+});
+
+// ELIMINAR TAREA (TF-009)
+app.get('/task/delete/:id/:projectId', isAuthenticated, async (req, res) => {
+    await Task.findByIdAndDelete(req.params.id);
+    res.redirect(`/project/${req.params.projectId}`);
+});
+
+// Iniciar
 app.listen(app.get('port'), () => {
     console.log(`Server on port ${app.get('port')}`);
-    console.log(`Visita: http://localhost:${app.get('port')}`);
 });

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Dashboard - Team Flow</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-primary px-4 mb-4">
+        <span class="navbar-brand">Team Flow | Dashboard</span>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-white">Hola, <%= user.name %></span>
+            <a href="/logout" class="btn btn-sm btn-light">Salir</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card p-3 mb-4">
+                    <h5>Crear Proyecto</h5>
+                    <form action="/projects/add" method="POST">
+                        <input type="text" name="title" class="form-control mb-2" placeholder="Título del proyecto" required>
+                        <textarea name="description" class="form-control mb-2" placeholder="Descripción"></textarea>
+                        <button class="btn btn-success w-100">Crear</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <h5>Mis Proyectos</h5>
+                <div class="row">
+                    <% projects.forEach(proj => { %>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title"><%= proj.title %></h5>
+                                    <p class="card-text text-muted"><%= proj.description %></p>
+                                    <small class="d-block mb-3">Owner: <%= proj.owner.name %></small>
+                                    <a href="/project/<%= proj._id %>" class="btn btn-primary">Ir al Tablero</a>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

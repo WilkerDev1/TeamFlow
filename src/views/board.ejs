@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title><%= project.title %> - Tablero</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .kanban-col { background: #ebecf0; min-height: 70vh; border-radius: 8px; padding: 10px; }
+        .task-card { background: white; padding: 10px; margin-bottom: 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: grab; }
+        .task-card.dragging { opacity: 0.5; }
+        .avatar-xs { width: 24px; height: 24px; border-radius: 50%; }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-light bg-white border-bottom px-4 mb-4">
+        <div>
+            <a href="/" class="btn btn-outline-secondary me-2"><i class="fas fa-arrow-left"></i></a>
+            <span class="fw-bold fs-5"><%= project.title %></span>
+        </div>
+        <div>
+            <!-- Filtro de Tareas TF-010 -->
+            <% if(filter === 'my') { %>
+                <a href="/project/<%= project._id %>" class="btn btn-outline-primary active">Ver Todo</a>
+            <% } else { %>
+                <a href="/project/<%= project._id %>?filter=my" class="btn btn-outline-secondary">Solo Mis Tareas</a>
+            <% } %>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <div class="row">
+            <!-- Columna TODO -->
+            <div class="col-md-4">
+                <h6 class="fw-bold text-secondary">POR HACER</h6>
+                <div class="kanban-col" data-status="todo" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <!-- Botón Crear Tarea Rápida -->
+                    <button class="btn btn-light w-100 mb-2 text-start text-muted" data-bs-toggle="modal" data-bs-target="#addTaskModal">+ Añadir tarea</button>
+                    
+                    <% todos.forEach(task => { %>
+                        <div class="task-card" draggable="true" ondragstart="drag(event)" id="<%= task._id %>">
+                            <div class="d-flex justify-content-between">
+                                <strong><%= task.title %></strong>
+                                <a href="/task/delete/<%= task._id %>/<%= project._id %>" class="text-danger"><i class="fas fa-times"></i></a>
+                            </div>
+                            <p class="small text-muted mb-1"><%= task.description %></p>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <span class="badge bg-<%= task.priority === 'alta' ? 'danger' : (task.priority === 'media' ? 'warning' : 'info') %> text-dark"><%= task.priority %></span>
+                                <% if(task.assignedTo) { %>
+                                    <img src="<%= task.assignedTo.avatar %>" class="avatar-xs" title="Asignado a: <%= task.assignedTo.name %>">
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+
+            <!-- Columna PROGRESS -->
+            <div class="col-md-4">
+                <h6 class="fw-bold text-primary">EN PROGRESO</h6>
+                <div class="kanban-col" data-status="progress" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <% progress.forEach(task => { %>
+                        <div class="task-card" draggable="true" ondragstart="drag(event)" id="<%= task._id %>">
+                            <div class="d-flex justify-content-between">
+                                <strong><%= task.title %></strong>
+                                <a href="/task/delete/<%= task._id %>/<%= project._id %>" class="text-danger"><i class="fas fa-times"></i></a>
+                            </div>
+                            <p class="small text-muted mb-1"><%= task.description %></p>
+                             <div class="d-flex justify-content-between align-items-center mt-2">
+                                <span class="badge bg-<%= task.priority === 'alta' ? 'danger' : (task.priority === 'media' ? 'warning' : 'info') %> text-dark"><%= task.priority %></span>
+                                <% if(task.assignedTo) { %>
+                                    <img src="<%= task.assignedTo.avatar %>" class="avatar-xs" title="Asignado a: <%= task.assignedTo.name %>">
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+
+            <!-- Columna DONE -->
+            <div class="col-md-4">
+                <h6 class="fw-bold text-success">TERMINADO</h6>
+                <div class="kanban-col" data-status="done" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <% done.forEach(task => { %>
+                        <div class="task-card" draggable="true" ondragstart="drag(event)" id="<%= task._id %>">
+                            <div class="d-flex justify-content-between">
+                                <strong class="text-decoration-line-through text-muted"><%= task.title %></strong>
+                                <a href="/task/delete/<%= task._id %>/<%= project._id %>" class="text-danger"><i class="fas fa-times"></i></a>
+                            </div>
+                             <div class="d-flex justify-content-between align-items-center mt-2">
+                                <span class="badge bg-secondary"><%= task.priority %></span>
+                                <% if(task.assignedTo) { %>
+                                    <img src="<%= task.assignedTo.avatar %>" class="avatar-xs" title="Asignado a: <%= task.assignedTo.name %>">
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear Tarea -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form action="/project/<%= project._id %>/tasks/add" method="POST" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva Tarea</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2"><label>Título</label><input name="title" class="form-control" required></div>
+                    <div class="mb-2"><label>Descripción</label><textarea name="description" class="form-control"></textarea></div>
+                    <div class="mb-2">
+                        <label>Prioridad</label>
+                        <select name="priority" class="form-select">
+                            <option value="baja">Baja</option>
+                            <option value="media" selected>Media</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label>Asignar a</label> <!-- TF-007 -->
+                        <select name="assignedTo" class="form-select">
+                            <% project.members.forEach(member => { %>
+                                <option value="<%= member._id %>" <%= member._id.equals(user._id) ? 'selected' : '' %>><%= member.name %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/kanban.js"></script>
+</body>
+</html>
